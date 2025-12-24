@@ -18,8 +18,52 @@ function getBlogPostsFromLocalStorage() {
     if (savedPosts) {
         return JSON.parse(savedPosts);
     }
-    // 默认博文数据（首次加载用）
+    // 替换为最新的博文数据（管理员编辑后的）
     return [
+        {
+            id: 1,
+            title: '修改后的标题', // 比如管理员改的新标题
+            content: '修改后的内容...'
+        },
+        // 其他博文...
+    ];
+}// 从 Gist 读取最新博文数据（核心修改）
+async function getBlogPostsFromGist() {
+    try {
+        const response = await fetch('https://gist.githubusercontent.com/letterbyme-2025/9144ebabee6dc38d457823513d4b587e/raw/062261c197103a5221ab11953254a9321aefbd98/gistfile1.txt');
+        if (response.ok) {
+            const gistPosts = await response.json();
+            // 将 Gist 数据同步到本地存储（缓存）
+            saveBlogPostsToLocalStorage(gistPosts);
+            return gistPosts;
+        }
+    } catch (error) {
+        console.log('读取Gist失败，使用本地缓存', error);
+    }
+    // 兜底：读取本地存储或默认数据
+    const savedPosts = localStorage.getItem('blogPosts');
+    return savedPosts ? JSON.parse(savedPosts) : [
+        // 兜底默认数据（可选）
+        { id: 1, title: '默认博文', content: '加载失败时显示' }
+    ];
+}
+
+// 初始化博文数据（改为异步）
+let blogPosts = [];
+document.addEventListener('DOMContentLoaded', async () => {
+    blogPosts = await getBlogPostsFromGist(); // 先加载Gist数据
+    
+    // 原有的事件绑定逻辑（不变）
+    loginBtn.addEventListener('click', openLoginModal);
+    closeModalBtns.forEach(btn => btn.addEventListener('click', closeModal));
+    submitLoginBtn.addEventListener('click', handleLogin);
+    backBtn.addEventListener('click', goBack);
+    submitBlogBtn.addEventListener('click', handleBlogSubmit);
+    window.addEventListener('click', handleOutsideClick);
+    document.querySelectorAll('.modal-content').forEach(content => {
+        content.addEventListener('click', (e) => e.stopPropagation());
+    });
+});
         {
             id: 1,
             title: '我的第一篇博文',
