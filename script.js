@@ -12,83 +12,14 @@ const users = {
     }
 };
 
-// 从本地存储读取博文数据，若无则用默认数据
-function getBlogPostsFromLocalStorage() {
-    const savedPosts = localStorage.getItem('blogPosts');
-    if (savedPosts) {
-        return JSON.parse(savedPosts);
+// 模拟博文数据
+let blogPosts = [
+    {
+        id: 1,
+        title: '2025.11.10',
+        content: '我不是给你写信的最佳人选，所以就这样。'
     }
-    // 替换为最新的博文数据（管理员编辑后的）
-    return [
-        {
-            id: 1,
-            title: '修改后的标题', // 比如管理员改的新标题
-            content: '修改后的内容...'
-        },
-        // 其他博文...
-    ];
-}// 从 Gist 读取最新博文数据（核心修改）
-async function getBlogPostsFromGist() {
-    try {
-        const response = await fetch('https://gist.githubusercontent.com/letterbyme-2025/9144ebabee6dc38d457823513d4b587e/raw/062261c197103a5221ab11953254a9321aefbd98/gistfile1.txt');
-        if (response.ok) {
-            const gistPosts = await response.json();
-            // 将 Gist 数据同步到本地存储（缓存）
-            saveBlogPostsToLocalStorage(gistPosts);
-            return gistPosts;
-        }
-    } catch (error) {
-        console.log('读取Gist失败，使用本地缓存', error);
-    }
-    // 兜底：读取本地存储或默认数据
-    const savedPosts = localStorage.getItem('blogPosts');
-    return savedPosts ? JSON.parse(savedPosts) : [
-        // 兜底默认数据（可选）
-        { id: 1, title: '默认博文', content: '加载失败时显示' }
-    ];
-}
-
-// 初始化博文数据（改为异步）
-let blogPosts = [];
-document.addEventListener('DOMContentLoaded', async () => {
-    blogPosts = await getBlogPostsFromGist(); // 先加载Gist数据
-    
-    // 原有的事件绑定逻辑（不变）
-    loginBtn.addEventListener('click', openLoginModal);
-    closeModalBtns.forEach(btn => btn.addEventListener('click', closeModal));
-    submitLoginBtn.addEventListener('click', handleLogin);
-    backBtn.addEventListener('click', goBack);
-    submitBlogBtn.addEventListener('click', handleBlogSubmit);
-    window.addEventListener('click', handleOutsideClick);
-    document.querySelectorAll('.modal-content').forEach(content => {
-        content.addEventListener('click', (e) => e.stopPropagation());
-    });
-});
-        {
-            id: 1,
-            title: '我的第一篇博文',
-            content: '这是我在这个平台上发布的第一篇博文。在这里，我将分享我的工作心得和生活感悟。'
-        },
-        {
-            id: 2,
-            title: '财富管理的核心原则',
-            content: '作为一名私人财富管理师，我认为风险管理比追求高收益更重要。资产配置是财富管理的基石。'
-        },
-        {
-            id: 3,
-            title: '香港大学学习生活回忆',
-            content: '在港大的四年是我人生中最宝贵的时光之一。这里不仅有优秀的学术环境，还有多元的文化体验。'
-        }
-    ];
-}
-
-// 将博文数据保存到本地存储
-function saveBlogPostsToLocalStorage(posts) {
-    localStorage.setItem('blogPosts', JSON.stringify(posts));
-}
-
-// 初始化博文数据（优先读取本地存储）
-let blogPosts = getBlogPostsFromLocalStorage();
+];
 
 // 当前登录用户
 let currentUser = null;
@@ -124,6 +55,29 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.modal-content').forEach(content => {
         content.addEventListener('click', (e) => e.stopPropagation());
     });
+  document.addEventListener('DOMContentLoaded', () => {
+    // 新增：刷新后自动恢复登录状态
+    const loggedUsername = localStorage.getItem('loggedUser');
+    if (loggedUsername && users[loggedUsername]) {
+        currentUser = {
+            ...users[loggedUsername],
+            username: loggedUsername
+        };
+        showBlogPage(); // 自动显示博文页，无需重新登录
+    }
+
+    // 原有事件绑定逻辑（保留）
+    loginBtn.addEventListener('click', openLoginModal);
+    closeModalBtns.forEach(btn => btn.addEventListener('click', closeModal));
+    submitLoginBtn.addEventListener('click', handleLogin);
+    backBtn.addEventListener('click', goBack);
+    submitBlogBtn.addEventListener('click', handleBlogSubmit);
+    window.addEventListener('click', handleOutsideClick);
+
+    document.querySelectorAll('.modal-content').forEach(content => {
+        content.addEventListener('click', (e) => e.stopPropagation());
+    });
+});
 });
 
 // 打开登录弹窗
@@ -167,22 +121,39 @@ function handleLogin() {
         closeModal();
     } else {
         errorMessage.textContent = '用户名或密码错误';
+      function handleLogin() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
+
+    if (users[username] && users[username].password === password) {
+        currentUser = {
+            ...users[username],
+            username: username
+        };
+        // 新增：保存登录用户名到本地存储（刷新不丢）
+        localStorage.setItem('loggedUser', username);
+        showBlogPage();
+        closeModal();
+    } else {
+        errorMessage.textContent = '用户名或密码错误';
+    }
+}
     }
 }
 
 // 显示博文页面
 function showBlogPage() {
     blogPage.classList.remove('hidden');
-    // 对于用户 'M'，显示特定欢迎语
-    if (currentUser.name === '访客') {
-        userInfo.textContent = 'Ｍ，你打开了这个界面。';
+    // 读取本地存储的登录用户名（刷新后仍能获取）
+    const loggedUsername = localStorage.getItem('loggedUser');
+    // 强制设置目标欢迎语（仅M登录时显示）
+    if (loggedUsername === 'M') {
+        userInfo.textContent = 'M，你又打开了这个界面。';
     } else {
-        userInfo.textContent = `欢迎，${currentUser.name}`;
+        userInfo.textContent = 'M，你又打开了这个界面。';
     }
-    
-    // 根据用户角色显示不同操作按钮
+    // 原有逻辑不变
     renderBlogActions();
-    // 渲染博文列表
     renderBlogList();
 }
 
@@ -260,18 +231,17 @@ function editBlogPost(id) {
 
 // 删除博文
 function deleteBlogPost(id) {
+    alert('删除按钮被点击，博文ID：' + id);
     if (confirm('确定要删除这篇博文吗？')) {
         blogPosts = blogPosts.filter(p => p.id !== id);
-        // 删除后同步保存到本地存储
-        saveBlogPostsToLocalStorage(blogPosts);
         renderBlogList();
     }
 }
 
-// 处理博文提交（新增/编辑）
+// 处理博文提交
 function handleBlogSubmit() {
-    const title = document.getElementById('blog-title').value.trim();
-    const content = document.getElementById('blog-content').value.trim();
+    const title = document.getElementById('blog-title').value;
+    const content = document.getElementById('blog-content').value;
     
     if (!title || !content) {
         alert('请填写标题和内容');
@@ -298,8 +268,6 @@ function handleBlogSubmit() {
         });
     }
     
-    // 提交后同步保存到本地存储
-    saveBlogPostsToLocalStorage(blogPosts);
     closeModal();
     renderBlogList();
 }
